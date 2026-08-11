@@ -1,5 +1,19 @@
-build.gradle
-app/build.gradle
-app/src/main/AndroidManifest.xml
-...
-.github/workflows/build-apk.yml
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "KiraSozlesmesi"
+include(":app")
