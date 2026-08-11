@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="18dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Kira Sözleşmesi"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            android:paddingBottom="6dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Excel sözleşmesini doldur"
+            android:textSize="15sp"
+            android:paddingBottom="18dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="KİRAYA VEREN"
+            android:textStyle="bold"/>
+
+        <EditText
+            android:id="@+id/ownerName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Ad Soyad"/>
+
+        <EditText
+            android:id="@+id/ownerTc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="T.C. Kimlik No"
+            android:inputType="number"/>
+
+        <EditText
+            android:id="@+id/ownerAddress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="İkametgah"/>
+
+        <EditText
+            android:id="@+id/ownerPhone"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Telefon"
+            android:inputType="phone"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="KİRACI"
+            android:textStyle="bold"
+            android:paddingTop="18dp"/>
+
+        <EditText
+            android:id="@+id/tenantName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Ad Soyad"/>
+
+        <EditText
+            android:id="@+id/tenantTc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="T.C. Kimlik No"
+            android:inputType="number"/>
+
+        <EditText
+            android:id="@+id/tenantAddress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="İkametgah"/>
+
+        <EditText
+            android:id="@+id/tenantWork"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="İşyeri"/>
+
+        <EditText
+            android:id="@+id/tenantPhone"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Telefon"
+            android:inputType="phone"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="KİRALANAN EV"
+            android:textStyle="bold"
+            android:paddingTop="18dp"/>
+
+        <EditText
+            android:id="@+id/flat"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Daire"/>
+
+        <EditText
+            android:id="@+id/neighborhood"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Mahalle"/>
+
+        <EditText
+            android:id="@+id/street"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Sokak / No"/>
+
+        <EditText
+            android:id="@+id/address"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Açık Adres"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="KİRA BİLGİLERİ"
+            android:textStyle="bold"
+            android:paddingTop="18dp"/>
+
+        <Spinner
+            android:id="@+id/rentMode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <EditText
+            android:id="@+id/monthlyRent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Aylık Kira (TL)"
+            android:inputType="numberDecimal"/>
+
+        <EditText
+            android:id="@+id/annualRent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Yıllık Toplam (TL)"
+            android:inputType="numberDecimal"/>
+
+        <EditText
+            android:id="@+id/payment"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Ödeme Şekli"/>
+
+        <EditText
+            android:id="@+id/duration"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Kira Süresi"/>
+
+        <EditText
+            android:id="@+id/startDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Başlangıç Tarihi"/>
+
+        <EditText
+            android:id="@+id/purpose"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Kullanım Amacı"
+            android:text="EV - MESKEN"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="DEMİRBAŞLAR"
+            android:textStyle="bold"
+            android:paddingTop="18dp"/>
+
+        <EditText
+            android:id="@+id/fixtures"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Demirbaşlar"
+            android:text="MUTFAK DOLABI, VESTİYER, YÜKLÜK, KOMBİ"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ÖZEL ŞARTLAR"
+            android:textStyle="bold"
+            android:paddingTop="18dp"/>
+
+        <EditText
+            android:id="@+id/specialTerms"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:gravity="top"
+            android:hint="Özel şartları buraya yazın"/>
+
+        <EditText
+            android:id="@+id/evacuationDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Tahliye Tarihi"/>
+
+        <Button
+            android:id="@+id/createExcel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="EXCEL OLUŞTUR"
+            android:textStyle="bold"
+            android:layout_marginTop="20dp"/>
+
+    </LinearLayout>
+
+</ScrollView>
