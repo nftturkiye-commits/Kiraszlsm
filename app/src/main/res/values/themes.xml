@@ -2,7 +2,7 @@
 <resources>
 
     <style name="Theme.KiraSozlesmesi"
-        parent="android:style/Theme.Material.Light.NoActionBar">
+        parent="Theme.AppCompat.Light.NoActionBar">
 
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">true</item>
