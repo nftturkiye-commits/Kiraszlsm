@@ -1,7 +1,5 @@
 package com.karahan.kirasozlesmesi
 
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
@@ -9,94 +7,189 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import org.apache.poi.xssf.usermodel.XSSFWorkbook
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var kirayaVeren: EditText
-    private lateinit var kirayaVerenTc: EditText
-    private lateinit var kiraci: EditText
-    private lateinit var kiraciTc: EditText
-    private lateinit var adres: EditText
-    private lateinit var aylikKira: EditText
-    private lateinit var kiraBaslangic: EditText
+    private lateinit var ownerName: EditText
+    private lateinit var ownerTc: EditText
+    private lateinit var ownerAddress: EditText
+    private lateinit var ownerPhone: EditText
 
-    private val dosyaOlusturucu =
-        registerForActivityResult(
-            ActivityResultContracts.CreateDocument(
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-        ) { uri ->
+    private lateinit var tenantName: EditText
+    private lateinit var tenantTc: EditText
+    private lateinit var tenantAddress: EditText
+    private lateinit var tenantWork: EditText
+    private lateinit var tenantPhone: EditText
 
-            if (uri != null) {
-                excelOlustur(uri)
-            }
-        }
+    private lateinit var flat: EditText
+    private lateinit var neighborhood: EditText
+    private lateinit var street: EditText
+    private lateinit var dwelling: EditText
+    private lateinit var address: EditText
+
+    private lateinit var monthlyRent: EditText
+    private lateinit var annualRent: EditText
+    private lateinit var paymentType: EditText
+    private lateinit var duration: EditText
+    private lateinit var startDate: EditText
+    private lateinit var purpose: EditText
+
+    private lateinit var fixturesContainer: LinearLayout
+    private lateinit var specialTerms: EditText
+    private lateinit var evacuationDate: EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val layout = LinearLayout(this)
-        layout.orientation = LinearLayout.VERTICAL
-        layout.setPadding(32, 32, 32, 32)
-
-        val title = TextView(this)
-        title.text = "KARAHAN EMLAK\nKİRA SÖZLEŞMESİ"
-        title.textSize = 24f
-
-        layout.addView(title)
-
-        kirayaVeren =
-            alanEkle(layout, "Kiraya Veren Adı Soyadı")
-
-        kirayaVerenTc =
-            alanEkle(layout, "Kiraya Veren T.C. Kimlik No")
-
-        kiraci =
-            alanEkle(layout, "Kiracının Adı Soyadı")
-
-        kiraciTc =
-            alanEkle(layout, "Kiracının T.C. Kimlik No")
-
-        adres =
-            alanEkle(layout, "Kiralanan Taşınmazın Adresi")
-
-        aylikKira =
-            alanEkle(layout, "Aylık Kira Bedeli")
-
-        kiraBaslangic =
-            alanEkle(layout, "Kira Başlangıç Tarihi")
-
-        val kaydet = Button(this)
-        kaydet.text = "SÖZLEŞMEYİ OLUŞTUR"
-
-        kaydet.setOnClickListener {
-            olustur()
-        }
-
-        layout.addView(kaydet)
+        val root = LinearLayout(this)
+        root.orientation = LinearLayout.VERTICAL
+        root.setPadding(28, 28, 28, 28)
 
         val scrollView = ScrollView(this)
-        scrollView.addView(layout)
+        val content = LinearLayout(this)
+        content.orientation = LinearLayout.VERTICAL
 
-        setContentView(scrollView)
+        title(content, "KARAHAN EMLAK")
+        title(content, "KİRA SÖZLEŞMESİ")
+
+        section(content, "1. KİRAYA VEREN")
+
+        ownerName = field(content, "Ad Soyad")
+        ownerTc = field(content, "T.C. Kimlik No")
+        ownerAddress = field(content, "İkametgah")
+        ownerPhone = field(content, "Telefon")
+
+        section(content, "2. KİRACI")
+
+        tenantName = field(content, "Ad Soyad")
+        tenantTc = field(content, "T.C. Kimlik No")
+        tenantAddress = field(content, "İkametgah")
+        tenantWork = field(content, "İşyeri")
+        tenantPhone = field(content, "Telefon")
+
+        section(content, "3. KİRALANAN EV")
+
+        flat = field(content, "Daire")
+        neighborhood = field(content, "Mahalle")
+        street = field(content, "Sokak / No")
+        dwelling = field(content, "Ev / Mesken")
+        address = multiLineField(content, "Açık Adres")
+
+        section(content, "4. KİRA BİLGİLERİ")
+
+        monthlyRent = field(content, "Aylık Kira (TL)")
+
+        annualRent = field(
+            content,
+            "Yıllık Kira (TL)"
+        )
+
+        monthlyRent.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                calculateAnnualRent()
+            }
+        }
+
+        paymentType = field(content, "Ödeme Şekli")
+        duration = field(content, "Kira Süresi")
+        startDate = field(content, "Başlangıç Tarihi")
+
+        purpose = field(
+            content,
+            "Kullanım Amacı"
+        )
+
+        purpose.setText("Mesken")
+
+        section(content, "5. DEMİRBAŞLAR")
+
+        fixturesContainer = LinearLayout(this)
+        fixturesContainer.orientation = LinearLayout.VERTICAL
+
+        addFixture("MUTFAK DOLABI")
+        addFixture("VESTİYER")
+        addFixture("YÜKLÜK")
+        addFixture("KOMBİ")
+
+        content.addView(fixturesContainer)
+
+        val addFixtureButton = Button(this)
+        addFixtureButton.text = "+ DEMİRBAŞ EKLE"
+
+        addFixtureButton.setOnClickListener {
+            addFixture("")
+        }
+
+        content.addView(addFixtureButton)
+
+        section(content, "6. ÖZEL ŞARTLAR")
+
+        specialTerms = multiLineField(
+            content,
+            "Özel şartları yazın..."
+        )
+
+        section(content, "7. TAHLİYE TAAHHÜTNAMESİ")
+
+        evacuationDate = field(
+            content,
+            "Taahhüt Edilen Tahliye Tarihi"
+        )
+
+        val info = TextView(this)
+        info.text =
+            "Kiracı ve kiraya veren bilgileri tahliye taahhütnamesine otomatik aktarılacaktır."
+        info.setPadding(0, 8, 0, 16)
+
+        content.addView(info)
+
+        val createButton = Button(this)
+        createButton.text = "EXCEL OLUŞTUR"
+
+        createButton.setOnClickListener {
+            createExcel()
+        }
+
+        content.addView(createButton)
+
+        scrollView.addView(content)
+        root.addView(scrollView)
+
+        setContentView(root)
     }
 
-    private fun alanEkle(
+    private fun title(
         layout: LinearLayout,
-        baslik: String
+        text: String
+    ) {
+        val view = TextView(this)
+        view.text = text
+        view.textSize = 24f
+        view.setPadding(0, 0, 0, 12)
+
+        layout.addView(view)
+    }
+
+    private fun section(
+        layout: LinearLayout,
+        text: String
+    ) {
+        val view = TextView(this)
+        view.text = text
+        view.textSize = 19f
+        view.setPadding(0, 24, 0, 12)
+
+        layout.addView(view)
+    }
+
+    private fun field(
+        layout: LinearLayout,
+        hint: String
     ): EditText {
 
-        val textView = TextView(this)
-        textView.text = baslik
-        textView.textSize = 16f
-
-        layout.addView(textView)
-
         val editText = EditText(this)
-        editText.hint = baslik
+        editText.hint = hint
         editText.textSize = 16f
 
         layout.addView(editText)
@@ -104,192 +197,140 @@ class MainActivity : AppCompatActivity() {
         return editText
     }
 
-    private fun olustur() {
+    private fun multiLineField(
+        layout: LinearLayout,
+        hint: String
+    ): EditText {
 
-        val kirayaVerenAd =
-            kirayaVeren.text.toString().trim()
+        val editText = EditText(this)
 
-        val kirayaVerenTcNo =
-            kirayaVerenTc.text.toString().trim()
+        editText.hint = hint
+        editText.textSize = 16f
+        editText.minLines = 3
+        editText.gravity = android.view.Gravity.TOP
 
-        val kiraciAd =
-            kiraci.text.toString().trim()
+        layout.addView(editText)
 
-        val kiraciTcNo =
-            kiraciTc.text.toString().trim()
+        return editText
+    }
 
-        val tasinmazAdres =
-            adres.text.toString().trim()
+    private fun addFixture(
+        value: String
+    ) {
 
-        val kira =
-            aylikKira.text.toString().trim()
+        val row = LinearLayout(this)
+        row.orientation = LinearLayout.HORIZONTAL
 
-        val baslangic =
-            kiraBaslangic.text.toString().trim()
+        val input = EditText(this)
+        input.hint = "Demirbaş adı"
+        input.setText(value)
 
-        if (kirayaVerenAd.isEmpty() ||
-            kiraciAd.isEmpty() ||
-            tasinmazAdres.isEmpty()
-        ) {
+        val delete = Button(this)
+        delete.text = "SİL"
 
-            Toast.makeText(
-                this,
-                "Lütfen zorunlu bilgileri doldurun.",
-                Toast.LENGTH_LONG
-            ).show()
+        delete.setOnClickListener {
+            fixturesContainer.removeView(row)
+        }
 
+        row.addView(
+            input,
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+            )
+        )
+
+        row.addView(
+            delete,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        fixturesContainer.addView(row)
+    }
+
+    private fun calculateAnnualRent() {
+
+        val monthlyText =
+            monthlyRent.text.toString().trim()
+
+        if (monthlyText.isEmpty()) {
+            return
+        }
+
+        val monthly =
+            monthlyText
+                .replace(",", ".")
+                .toDoubleOrNull()
+                ?: return
+
+        val annual = monthly * 12
+
+        annualRent.setText(
+            if (annual % 1.0 == 0.0) {
+                annual.toLong().toString()
+            } else {
+                annual.toString()
+            }
+        )
+    }
+
+    private fun createExcel() {
+
+        if (ownerName.text.toString().trim().isEmpty()) {
+            showMessage("Kiraya veren adını girin.")
+            return
+        }
+
+        if (tenantName.text.toString().trim().isEmpty()) {
+            showMessage("Kiracı adını girin.")
+            return
+        }
+
+        if (address.text.toString().trim().isEmpty()) {
+            showMessage("Kiralanan evin adresini girin.")
             return
         }
 
         /*
-         * Dosya adını kullanıcıya soracağız.
-         * Örnek:
-         * Kira_Sozlesmesi_Ahmet_Yilmaz.xlsx
+         * Şablon dosyamız:
+         *
+         * app/src/main/assets/sablon.xlsx
+         *
+         * Bir sonraki aşamada burada gerçek Excel
+         * hücre eşleştirmelerini yapacağız.
          */
-
-        dosyaOlusturucu.launch(
-            "Kira_Sozlesmesi_${kiraciAd.replace(" ", "_")}.xlsx"
-        )
-    }
-
-    private fun excelOlustur(uri: Uri) {
 
         try {
 
-            /*
-             * GitHub'daki:
-             *
-             * app/src/main/assets/sablon.xlsx
-             *
-             * dosyasını uygulamanın assets klasöründen açıyoruz.
-             */
-
-            val inputStream =
-                assets.open("sablon.xlsx")
-
-            val workbook =
-                XSSFWorkbook(inputStream)
-
-            inputStream.close()
-
-            /*
-             * Excel'in ilk sayfasını kullanıyoruz.
-             */
-
-            val sheet =
-                workbook.getSheetAt(0)
-
-            /*
-             * ŞİMDİLİK hücre eşleştirmeleri:
-             *
-             * B2 = Kiraya veren
-             * B3 = Kiraya veren TC
-             * B4 = Kiracı
-             * B5 = Kiracı TC
-             * B6 = Adres
-             * B7 = Aylık kira
-             * B8 = Başlangıç tarihi
-             *
-             * Excel formundaki gerçek hücreler farklıysa
-             * sadece bu bölüm değiştirilecek.
-             */
-
-            sheet.getRow(1)
-                .getCellOrCreate(1)
-                .setCellValue(kirayaVeren.text.toString())
-
-            sheet.getRow(2)
-                .getCellOrCreate(1)
-                .setCellValue(kirayaVerenTc.text.toString())
-
-            sheet.getRow(3)
-                .getCellOrCreate(1)
-                .setCellValue(kiraci.text.toString())
-
-            sheet.getRow(4)
-                .getCellOrCreate(1)
-                .setCellValue(kiraciTc.text.toString())
-
-            sheet.getRow(5)
-                .getCellOrCreate(1)
-                .setCellValue(adres.text.toString())
-
-            sheet.getRow(6)
-                .getCellOrCreate(1)
-                .setCellValue(aylikKira.text.toString())
-
-            sheet.getRow(7)
-                .getCellOrCreate(1)
-                .setCellValue(kiraBaslangic.text.toString())
-
-            /*
-             * Kullanıcının seçtiği yere Excel'i kaydet.
-             */
-
-            contentResolver.openOutputStream(uri).use { outputStream ->
-
-                if (outputStream == null) {
-                    throw Exception("Dosya oluşturulamadı.")
-                }
-
-                workbook.write(outputStream)
+            assets.open("sablon.xlsx").use {
+                // Şablonun uygulama içinde bulunduğunu kontrol ediyoruz.
             }
 
-            workbook.close()
-
-            Toast.makeText(
-                this,
-                "Kira sözleşmesi Excel olarak oluşturuldu.",
-                Toast.LENGTH_LONG
-            ).show()
-
-            /*
-             * Oluşturulan Excel'i açmayı deniyoruz.
-             */
-
-            try {
-
-                val intent = Intent(
-                    Intent.ACTION_VIEW,
-                    uri
-                )
-
-                intent.addFlags(
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-
-                startActivity(intent)
-
-            } catch (e: Exception) {
-
-                Toast.makeText(
-                    this,
-                    "Excel dosyası kaydedildi. Açmak için dosyalar bölümünden seçebilirsiniz.",
-                    Toast.LENGTH_LONG
-                ).show()
-            }
+            showMessage(
+                "Bilgiler hazır. Excel şablonu bulundu. " +
+                        "Hücre eşleştirme aşamasına geçebiliriz."
+            )
 
         } catch (e: Exception) {
 
-            e.printStackTrace()
-
-            Toast.makeText(
-                this,
-                "Excel oluşturulurken hata oluştu:\n${e.message}",
-                Toast.LENGTH_LONG
-            ).show()
+            showMessage(
+                "sablon.xlsx bulunamadı."
+            )
         }
     }
 
-    /*
-     * POI'de satır veya hücre yoksa oluşturan yardımcı fonksiyonlar.
-     */
+    private fun showMessage(
+        message: String
+    ) {
 
-    private fun org.apache.poi.ss.usermodel.Row.getCellOrCreate(
-        index: Int
-    ): org.apache.poi.ss.usermodel.Cell {
-
-        return getCell(index)
-            ?: createCell(index)
+        Toast.makeText(
+            this,
+            message,
+            Toast.LENGTH_LONG
+        ).show()
     }
 }
