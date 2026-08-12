@@ -1,151 +1,89 @@
 package com.karahan.kirasozlesmesi
 
-import android.app.Activity
 import android.os.Bundle
-import android.widget.*
-import android.content.Intent
-import android.net.Uri
-import java.text.SimpleDateFormat
-import java.util.*
+import android.widget.Button
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
 
-class MainActivity : Activity() {
+class MainActivity : AppCompatActivity() {
 
-    private lateinit var rentMode: Spinner
-    private lateinit var monthlyRent: EditText
-    private lateinit var annualRent: EditText
+    private lateinit var kirayaVeren: EditText
+    private lateinit var kirayaVerenTc: EditText
+    private lateinit var kiraci: EditText
+    private lateinit var kiraciTc: EditText
+    private lateinit var adres: EditText
+    private lateinit var aylikKira: EditText
+    private lateinit var kiraBaslangic: EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        setContentView(R.layout.activity_main)
+        val layout = LinearLayout(this)
+        layout.orientation = LinearLayout.VERTICAL
+        layout.setPadding(32, 32, 32, 32)
 
-        rentMode = findViewById(R.id.rentMode)
-        monthlyRent = findViewById(R.id.monthlyRent)
-        annualRent = findViewById(R.id.annualRent)
+        val title = TextView(this)
+        title.text = "KARAHAN EMLAK\nKİRA SÖZLEŞMESİ"
+        title.textSize = 24f
 
-        setupRentMode()
-        setupRentCalculation()
+        layout.addView(title)
 
-        findViewById<Button>(R.id.createExcel).setOnClickListener {
-            createExcel()
+        kirayaVeren = alanEkle(layout, "Kiraya Veren Adı Soyadı")
+        kirayaVerenTc = alanEkle(layout, "Kiraya Veren T.C. Kimlik No")
+        kiraci = alanEkle(layout, "Kiracının Adı Soyadı")
+        kiraciTc = alanEkle(layout, "Kiracının T.C. Kimlik No")
+        adres = alanEkle(layout, "Kiralanan Taşınmazın Adresi")
+        aylikKira = alanEkle(layout, "Aylık Kira Bedeli")
+        kiraBaslangic = alanEkle(layout, "Kira Başlangıç Tarihi")
+
+        val kaydet = Button(this)
+        kaydet.text = "SÖZLEŞMEYİ OLUŞTUR"
+
+        kaydet.setOnClickListener {
+            olustur()
         }
+
+        layout.addView(kaydet)
+
+        val scrollView = ScrollView(this)
+        scrollView.addView(layout)
+
+        setContentView(scrollView)
     }
 
-    private fun setupRentMode() {
+    private fun alanEkle(
+        layout: LinearLayout,
+        baslik: String
+    ): EditText {
 
-        val modes = arrayOf(
-            "Aylık ödeme",
-            "Yıllık ödeme"
-        )
+        val textView = TextView(this)
+        textView.text = baslik
+        textView.textSize = 16f
 
-        val adapter = ArrayAdapter(
+        layout.addView(textView)
+
+        val editText = EditText(this)
+        editText.hint = baslik
+        editText.textSize = 16f
+
+        layout.addView(editText)
+
+        return editText
+    }
+
+    private fun olustur() {
+
+        // Bir sonraki aşamada burada
+        // sablon.xlsx dosyasını açıp
+        // bilgileri Excel'in ilgili hücrelerine yazacağız.
+
+        android.widget.Toast.makeText(
             this,
-            android.R.layout.simple_spinner_dropdown_item,
-            modes
-        )
-
-        rentMode.adapter = adapter
-
-        rentMode.onItemSelectedListener =
-            object : AdapterView.OnItemSelectedListener {
-
-                override fun onNothingSelected(parent: AdapterView<*>?) {
-                }
-
-                override fun onItemSelected(
-                    parent: AdapterView<*>?,
-                    view: android.view.View?,
-                    position: Int,
-                    id: Long
-                ) {
-
-                    if (position == 0) {
-
-                        // Aylık ödeme
-                        monthlyRent.isEnabled = true
-                        annualRent.isEnabled = false
-
-                        annualRent.setText("")
-
-                    } else {
-
-                        // Yıllık ödeme
-                        monthlyRent.isEnabled = false
-                        annualRent.isEnabled = true
-
-                        monthlyRent.setText("")
-                    }
-                }
-            }
-    }
-
-    private fun setupRentCalculation() {
-
-        monthlyRent.setOnFocusChangeListener { _, hasFocus ->
-
-            if (!hasFocus &&
-                rentMode.selectedItemPosition == 0
-            ) {
-
-                calculateAnnualRent()
-            }
-        }
-    }
-
-    private fun calculateAnnualRent() {
-
-        val monthly =
-            monthlyRent.text.toString()
-                .replace(",", ".")
-                .toDoubleOrNull()
-
-        if (monthly != null) {
-
-            val annual = monthly * 12
-
-            annualRent.setText(
-                if (annual % 1.0 == 0.0)
-                    annual.toLong().toString()
-                else
-                    annual.toString()
-            )
-        }
-    }
-
-    private fun createExcel() {
-
-        if (rentMode.selectedItemPosition == 0) {
-
-            calculateAnnualRent()
-
-        } else {
-
-            if (annualRent.text.toString().trim().isEmpty()) {
-
-                Toast.makeText(
-                    this,
-                    "Yıllık kira toplamını girin.",
-                    Toast.LENGTH_SHORT
-                ).show()
-
-                return
-            }
-        }
-
-        /*
-         * Şimdilik form kontrolü burada tamamlanıyor.
-         *
-         * Bir sonraki aşamada bu bölüm:
-         *
-         * Form → Excel şablonu → 3 sayfa → XLS çıktı
-         *
-         * motoruna bağlanacak.
-         */
-
-        Toast.makeText(
-            this,
-            "Form hazır. Excel motoruna bağlanacak.",
-            Toast.LENGTH_LONG
+            "Bilgiler hazır. Excel oluşturma bölümü sıradaki adım.",
+            android.widget.Toast.LENGTH_LONG
         ).show()
     }
 }
