@@ -1,13 +1,12 @@
 package com.karahan.kirasozlesmesi
 
+import android.net.Uri
 import android.os.Bundle
-import android.widget.Button
-import android.widget.EditText
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -39,6 +38,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var specialTerms: EditText
     private lateinit var evacuationDate: EditText
 
+    private val createDocument =
+        registerForActivityResult(
+            ActivityResultContracts.CreateDocument(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        ) { uri ->
+            if (uri != null) {
+                writeExcel(uri)
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -46,7 +56,7 @@ class MainActivity : AppCompatActivity() {
         root.orientation = LinearLayout.VERTICAL
         root.setPadding(28, 28, 28, 28)
 
-        val scrollView = ScrollView(this)
+        val scroll = ScrollView(this)
         val content = LinearLayout(this)
         content.orientation = LinearLayout.VERTICAL
 
@@ -74,33 +84,24 @@ class MainActivity : AppCompatActivity() {
         neighborhood = field(content, "Mahalle")
         street = field(content, "Sokak / No")
         dwelling = field(content, "Ev / Mesken")
-        address = multiLineField(content, "Açık Adres")
+        address = multiField(content, "Açık Adres")
 
         section(content, "4. KİRA BİLGİLERİ")
 
         monthlyRent = field(content, "Aylık Kira (TL)")
-
-        annualRent = field(
-            content,
-            "Yıllık Kira (TL)"
-        )
+        annualRent = field(content, "Yıllık Kira (TL)")
 
         monthlyRent.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) {
-                calculateAnnualRent()
+                calculateAnnual()
             }
         }
 
         paymentType = field(content, "Ödeme Şekli")
         duration = field(content, "Kira Süresi")
-        startDate = field(content, "Başlangıç Tarihi")
-
-        purpose = field(
-            content,
-            "Kullanım Amacı"
-        )
-
-        purpose.setText("Mesken")
+        startDate = field(content, "Kira Başlangıç Tarihi")
+        purpose = field(content, "Kullanım Amacı")
+        purpose.setText("EV - MESKEN")
 
         section(content, "5. DEMİRBAŞLAR")
 
@@ -114,47 +115,45 @@ class MainActivity : AppCompatActivity() {
 
         content.addView(fixturesContainer)
 
-        val addFixtureButton = Button(this)
-        addFixtureButton.text = "+ DEMİRBAŞ EKLE"
-
-        addFixtureButton.setOnClickListener {
+        val addButton = Button(this)
+        addButton.text = "+ DEMİRBAŞ EKLE"
+        addButton.setOnClickListener {
             addFixture("")
         }
-
-        content.addView(addFixtureButton)
+        content.addView(addButton)
 
         section(content, "6. ÖZEL ŞARTLAR")
 
-        specialTerms = multiLineField(
+        specialTerms = multiField(
             content,
             "Özel şartları yazın..."
         )
 
         section(content, "7. TAHLİYE TAAHHÜTNAMESİ")
 
-        evacuationDate = field(
-            content,
-            "Taahhüt Edilen Tahliye Tarihi"
-        )
+        evacuationDate =
+            field(
+                content,
+                "Taahhüt Edilen Tahliye Tarihi"
+            )
 
         val info = TextView(this)
         info.text =
             "Kiracı ve kiraya veren bilgileri tahliye taahhütnamesine otomatik aktarılacaktır."
         info.setPadding(0, 8, 0, 16)
-
         content.addView(info)
 
         val createButton = Button(this)
         createButton.text = "EXCEL OLUŞTUR"
 
         createButton.setOnClickListener {
-            createExcel()
+            prepareExcel()
         }
 
         content.addView(createButton)
 
-        scrollView.addView(content)
-        root.addView(scrollView)
+        scroll.addView(content)
+        root.addView(scroll)
 
         setContentView(root)
     }
@@ -163,24 +162,22 @@ class MainActivity : AppCompatActivity() {
         layout: LinearLayout,
         text: String
     ) {
-        val view = TextView(this)
-        view.text = text
-        view.textSize = 24f
-        view.setPadding(0, 0, 0, 12)
-
-        layout.addView(view)
+        val t = TextView(this)
+        t.text = text
+        t.textSize = 24f
+        t.setPadding(0, 0, 0, 10)
+        layout.addView(t)
     }
 
     private fun section(
         layout: LinearLayout,
         text: String
     ) {
-        val view = TextView(this)
-        view.text = text
-        view.textSize = 19f
-        view.setPadding(0, 24, 0, 12)
-
-        layout.addView(view)
+        val t = TextView(this)
+        t.text = text
+        t.textSize = 19f
+        t.setPadding(0, 24, 0, 10)
+        layout.addView(t)
     }
 
     private fun field(
@@ -188,35 +185,28 @@ class MainActivity : AppCompatActivity() {
         hint: String
     ): EditText {
 
-        val editText = EditText(this)
-        editText.hint = hint
-        editText.textSize = 16f
-
-        layout.addView(editText)
-
-        return editText
+        val e = EditText(this)
+        e.hint = hint
+        e.textSize = 16f
+        layout.addView(e)
+        return e
     }
 
-    private fun multiLineField(
+    private fun multiField(
         layout: LinearLayout,
         hint: String
     ): EditText {
 
-        val editText = EditText(this)
-
-        editText.hint = hint
-        editText.textSize = 16f
-        editText.minLines = 3
-        editText.gravity = android.view.Gravity.TOP
-
-        layout.addView(editText)
-
-        return editText
+        val e = EditText(this)
+        e.hint = hint
+        e.textSize = 16f
+        e.minLines = 3
+        e.gravity = android.view.Gravity.TOP
+        layout.addView(e)
+        return e
     }
 
-    private fun addFixture(
-        value: String
-    ) {
+    private fun addFixture(value: String) {
 
         val row = LinearLayout(this)
         row.orientation = LinearLayout.HORIZONTAL
@@ -241,95 +231,411 @@ class MainActivity : AppCompatActivity() {
             )
         )
 
-        row.addView(
-            delete,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-        )
+        row.addView(delete)
 
         fixturesContainer.addView(row)
     }
 
-    private fun calculateAnnualRent() {
-
-        val monthlyText =
-            monthlyRent.text.toString().trim()
-
-        if (monthlyText.isEmpty()) {
-            return
-        }
+    private fun calculateAnnual() {
 
         val monthly =
-            monthlyText
+            monthlyRent.text.toString()
                 .replace(",", ".")
+                .trim()
                 .toDoubleOrNull()
-                ?: return
 
-        val annual = monthly * 12
+        if (monthly != null) {
 
-        annualRent.setText(
-            if (annual % 1.0 == 0.0) {
-                annual.toLong().toString()
-            } else {
-                annual.toString()
-            }
-        )
+            val annual = monthly * 12
+
+            annualRent.setText(
+                if (annual % 1.0 == 0.0) {
+                    annual.toLong().toString()
+                } else {
+                    String.format(
+                        Locale.US,
+                        "%.2f",
+                        annual
+                    )
+                }
+            )
+        }
     }
 
-    private fun createExcel() {
+    private fun prepareExcel() {
 
         if (ownerName.text.toString().trim().isEmpty()) {
-            showMessage("Kiraya veren adını girin.")
+            message("Kiraya veren adını girin.")
             return
         }
 
         if (tenantName.text.toString().trim().isEmpty()) {
-            showMessage("Kiracı adını girin.")
+            message("Kiracı adını girin.")
             return
         }
 
         if (address.text.toString().trim().isEmpty()) {
-            showMessage("Kiralanan evin adresini girin.")
+            message("Açık adresi girin.")
             return
         }
 
-        /*
-         * Şablon dosyamız:
-         *
-         * app/src/main/assets/sablon.xlsx
-         *
-         * Bir sonraki aşamada burada gerçek Excel
-         * hücre eşleştirmelerini yapacağız.
-         */
+        createDocument.launch(
+            "Kira_Sozlesmesi_" +
+                    safeFileName(
+                        tenantName.text.toString()
+                    ) +
+                    ".xlsx"
+        )
+    }
+
+    private fun writeExcel(uri: Uri) {
 
         try {
 
-            assets.open("sablon.xlsx").use {
-                // Şablonun uygulama içinde bulunduğunu kontrol ediyoruz.
+            val input =
+                assets.open("sablon.xlsx")
+
+            val workbook =
+                XSSFWorkbook(input)
+
+            input.close()
+
+            val sayfa1 =
+                workbook.getSheet("Sayfa1")
+
+            val sayfa2 =
+                workbook.getSheet("Sayfa2")
+
+            val sayfa3 =
+                workbook.getSheet("Sayfa3")
+
+            if (sayfa1 == null ||
+                sayfa2 == null ||
+                sayfa3 == null
+            ) {
+                workbook.close()
+                message("Excel sayfaları bulunamadı.")
+                return
             }
 
-            showMessage(
-                "Bilgiler hazır. Excel şablonu bulundu. " +
-                        "Hücre eşleştirme aşamasına geçebiliriz."
+            // ------------------------------------------------
+            // SAYFA 1 - KİRA SÖZLEŞMESİ
+            // ------------------------------------------------
+
+            setValue(sayfa1, "E7", flat.text.toString())
+            setValue(sayfa1, "E8", neighborhood.text.toString())
+            setValue(sayfa1, "E9", street.text.toString())
+            setValue(sayfa1, "E10", dwelling.text.toString())
+
+            setValue(sayfa1, "E11", ownerName.text.toString())
+            setValue(sayfa1, "E12", ownerTc.text.toString())
+            setValue(sayfa1, "E13", ownerAddress.text.toString())
+
+            setValue(sayfa1, "E15", tenantName.text.toString())
+            setValue(sayfa1, "E16", tenantTc.text.toString())
+
+            /*
+             * Şablonda E17 ve E18 zaten:
+             *
+             * =E8
+             * =E9
+             *
+             * formüllerine bağlı.
+             *
+             * Bu yüzden onları değiştirmiyoruz.
+             */
+
+            setValue(sayfa1, "E19", tenantWork.text.toString())
+
+            val monthly =
+                monthlyRent.text.toString()
+                    .replace(",", ".")
+                    .trim()
+                    .toDoubleOrNull()
+
+            val annual =
+                annualRent.text.toString()
+                    .replace(",", ".")
+                    .trim()
+                    .toDoubleOrNull()
+
+            if (monthly != null) {
+                setNumber(sayfa1, "E21", monthly)
+            }
+
+            /*
+             * Özel yıllık kira mantığı:
+             *
+             * Yıllık = aylık x 12 ise mevcut Excel
+             * formülünü koruyoruz.
+             *
+             * Kullanıcı yıllık tutarı farklı girdiyse,
+             * formülü kaldırıp kullanıcının verdiği
+             * yıllık tutarı yazıyoruz.
+             */
+
+            if (monthly != null &&
+                annual != null &&
+                kotlin.math.abs(annual - monthly * 12.0) < 0.01
+            ) {
+
+                setFormula(
+                    sayfa1,
+                    "E22",
+                    "12*E21"
+                )
+
+            } else if (annual != null) {
+
+                setNumber(
+                    sayfa1,
+                    "E22",
+                    annual
+                )
+            }
+
+            setValue(
+                sayfa1,
+                "E23",
+                paymentType.text.toString()
+            )
+
+            setValue(
+                sayfa1,
+                "E24",
+                duration.text.toString()
+            )
+
+            setValue(
+                sayfa1,
+                "E25",
+                startDate.text.toString()
+            )
+
+            setValue(
+                sayfa1,
+                "E27",
+                purpose.text.toString()
+            )
+
+            // ------------------------------------------------
+            // DEMİRBAŞLAR
+            // ------------------------------------------------
+
+            val fixtures = ArrayList<String>()
+
+            for (i in 0 until fixturesContainer.childCount) {
+
+                val row =
+                    fixturesContainer.getChildAt(i)
+                        as? LinearLayout ?: continue
+
+                if (row.childCount == 0) continue
+
+                val input =
+                    row.getChildAt(0)
+                        as? EditText ?: continue
+
+                val text =
+                    input.text.toString().trim()
+
+                if (text.isNotEmpty()) {
+                    fixtures.add(text)
+                }
+            }
+
+            setValue(
+                sayfa1,
+                "B31",
+                fixtures.joinToString("-")
+            )
+
+            // ------------------------------------------------
+            // ÖZEL ŞARTLAR
+            // ------------------------------------------------
+
+            val terms =
+                specialTerms.text.toString().trim()
+
+            if (terms.isNotEmpty()) {
+
+                setValue(
+                    sayfa2,
+                    "B50",
+                    terms
+                )
+            }
+
+            // ------------------------------------------------
+            // TELEFONLAR
+            // ------------------------------------------------
+
+            setValue(
+                sayfa2,
+                "B60",
+                "TELEFON :" +
+                        ownerPhone.text.toString()
+            )
+
+            setValue(
+                sayfa2,
+                "F60",
+                "TELEFON :" +
+                        tenantPhone.text.toString()
+            )
+
+            // ------------------------------------------------
+            // TAHLİYE TAAHHÜTNAMESİ
+            // ------------------------------------------------
+
+            /*
+             * F8/F9/F13/F14/F35/F36 gibi hücrelerde
+             * zaten Sayfa1'e bağlı formüller bulunuyor.
+             *
+             * Bu formüllere dokunmuyoruz.
+             */
+
+            setValue(
+                sayfa3,
+                "F23",
+                evacuationDate.text.toString()
+            )
+
+            // ------------------------------------------------
+            // DOSYAYI KAYDET
+            // ------------------------------------------------
+
+            val output =
+                contentResolver.openOutputStream(uri)
+
+            if (output == null) {
+                workbook.close()
+                message("Dosya oluşturulamadı.")
+                return
+            }
+
+            output.use {
+                workbook.write(it)
+            }
+
+            workbook.close()
+
+            message(
+                "Kira sözleşmesi Excel olarak oluşturuldu."
             )
 
         } catch (e: Exception) {
 
-            showMessage(
-                "sablon.xlsx bulunamadı."
+            e.printStackTrace()
+
+            message(
+                "Excel oluşturulurken hata oluştu:\n" +
+                        e.message
             )
         }
     }
 
-    private fun showMessage(
-        message: String
+    private fun setValue(
+        sheet: org.apache.poi.ss.usermodel.Sheet,
+        address: String,
+        value: String
+    ) {
+
+        val cell =
+            getCell(sheet, address)
+
+        cell.setCellValue(value)
+    }
+
+    private fun setNumber(
+        sheet: org.apache.poi.ss.usermodel.Sheet,
+        address: String,
+        value: Double
+    ) {
+
+        val cell =
+            getCell(sheet, address)
+
+        cell.setCellValue(value)
+    }
+
+    private fun setFormula(
+        sheet: org.apache.poi.ss.usermodel.Sheet,
+        address: String,
+        formula: String
+    ) {
+
+        val cell =
+            getCell(sheet, address)
+
+        cell.cellFormula = formula
+    }
+
+    private fun getCell(
+        sheet: org.apache.poi.ss.usermodel.Sheet,
+        address: String
+    ): org.apache.poi.ss.usermodel.Cell {
+
+        val parts =
+            address.split(
+                Regex("(?<=\\D)(?=\\d)")
+            )
+
+        val columnName =
+            parts[0]
+
+        val rowNumber =
+            parts[1].toInt() - 1
+
+        val row =
+            sheet.getRow(rowNumber)
+                ?: sheet.createRow(rowNumber)
+
+        val column =
+            columnNumber(columnName)
+
+        return row.getCell(column)
+            ?: row.createCell(column)
+    }
+
+    private fun columnNumber(
+        column: String
+    ): Int {
+
+        var result = 0
+
+        for (char in column.uppercase()) {
+            result =
+                result * 26 +
+                        (char.code - 'A'.code + 1)
+        }
+
+        return result - 1
+    }
+
+    private fun safeFileName(
+        name: String
+    ): String {
+
+        return name
+            .trim()
+            .replace(
+                Regex("[^a-zA-Z0-9ğĞüÜşŞıİöÖçÇ ]"),
+                ""
+            )
+            .replace(" ", "_")
+            .ifEmpty {
+                "Kira_Sozlesmesi"
+            }
+    }
+
+    private fun message(
+        text: String
     ) {
 
         Toast.makeText(
             this,
-            message,
+            text,
             Toast.LENGTH_LONG
         ).show()
     }
