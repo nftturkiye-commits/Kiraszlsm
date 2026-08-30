@@ -157,7 +157,7 @@ class MainActivity : AppCompatActivity() {
             text = "EXCEL'E DÖNÜŞTÜR"
             textSize = 17f
             setOnClickListener { prepareExcel() }
-        }.also { actionBar.addView(it, LinearLayout.LayoutParams(-1, 56)) }
+        }.also { actionBar.addView(it, LinearLayout.LayoutParams(-1, (56 * resources.displayMetrics.density).toInt())) }
         TextView(this).apply {
             text = "Formüller korunur • PC'de Excel elle düzenlenebilir"
             gravity = Gravity.CENTER
