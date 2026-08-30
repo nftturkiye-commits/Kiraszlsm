@@ -6,7 +6,6 @@ import android.view.Gravity
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import org.apache.poi.ss.usermodel.CellStyle
 import org.apache.poi.ss.usermodel.WorkbookFactory
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.text.DecimalFormat
@@ -101,7 +100,7 @@ class MainActivity : AppCompatActivity() {
         purpose = field(content, "Kullanım Amacı")
         purpose.setText("EV - MESKEN")
 
-        section(content, "5. DEMİRBAŞLAR")
+        section(content, "5. DEMİRBŞLAR")
         fixturesContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         addFixture("MUTFAK DOLABI")
         addFixture("VESTİYER")
@@ -265,7 +264,7 @@ class MainActivity : AppCompatActivity() {
                 val s2 = workbook.getSheet("Sayfa2")
                 val s3 = workbook.getSheet("Sayfa3")
 
-                setValue(s1, "E7", flat.text.toString())
+                // E7 is part of the original address hierarchy (SIVAS MERKEZ) and is preserved from the template.
                 setValue(s1, "E8", neighborhood.text.toString())
                 setValue(s1, "E9", street.text.toString())
                 setValue(s1, "E10", dwelling.text.toString().ifBlank { "EV - MESKEN" })
@@ -314,96 +313,17 @@ class MainActivity : AppCompatActivity() {
 
                 setValue(s3, "B24", evacuationDate.text.toString())
 
-                configureA4Layout(workbook)
-
-                enableWrap(s1, "E13", 36f)
-                enableWrap(s1, "E19", 36f)
-                enableWrap(s1, "E31", 32f)
-                enableWrap(s2, "B50", 54f)
-                enableWrap(s3, "B19", 36f)
-
+                // IMPORTANT: do not alter the template's original A4, widths, heights, merges, fonts or wrapping.
                 workbook.setForceFormulaRecalculation(true)
                 contentResolver.openOutputStream(uri).use { output ->
                     requireNotNull(output)
                     workbook.write(output)
                 }
                 workbook.close()
-                Toast.makeText(this, "Excel oluşturuldu. A4 düzeni ve formüller korundu.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Excel oluşturuldu. Orijinal şablon düzeni ve formüller korundu.", Toast.LENGTH_LONG).show()
             }
         } catch (e: Exception) {
             Toast.makeText(this, "Excel oluşturulamadı: ${e.message}", Toast.LENGTH_LONG).show()
-        }
-    }
-
-    private fun configureA4Layout(workbook: XSSFWorkbook) {
-        for (sheet in workbook) {
-            sheet.setFitToPage(true)
-            sheet.setAutobreaks(false)
-            val setup = sheet.printSetup
-            setup.paperSize = 9
-            setup.landscape = false
-            setup.fitWidth = 1
-            setup.fitHeight = 1
-            setup.scale = 100
-        }
-    }
-
-    private fun enableWrap(sheet: org.apache.poi.ss.usermodel.Sheet, cellRef: String, minimumHeightPoints: Float) {
-        val m = Regex("([A-Z]+)([0-9]+)").matchEntire(cellRef) ?: return
-        val colLetters = m.groupValues[1]
-        val rowIndex = m.groupValues[2].toInt() - 1
-        var col = 0
-        for (ch in colLetters) col = col * 26 + (ch - 'A' + 1)
-        col -= 1
-        val row = sheet.getRow(rowIndex) ?: return
-        val cell = row.getCell(col) ?: return
-
-        val style = sheet.workbook.createCellStyle()
-        style.cloneStyleFrom(cell.cellStyle)
-        style.wrapText = true
-        cell.cellStyle = style
-
-        // The original workbook's merged cells and column widths are preserved.
-        // Only the height needed by the actual text is increased, so long addresses
-        // and special conditions are fully visible without redesigning the template.
-        val text = cell.toString().trim()
-        if (text.isEmpty()) return
-
-        var firstCol = col
-        var lastCol = col
-        var firstRow = rowIndex
-        var lastRow = rowIndex
-        for (region in sheet.mergedRegions) {
-            if (region.isInRange(rowIndex, col)) {
-                firstCol = region.firstColumn
-                lastCol = region.lastColumn
-                firstRow = region.firstRow
-                lastRow = region.lastRow
-                break
-            }
-        }
-
-        var widthUnits = 0
-        for (c in firstCol..lastCol) widthUnits += sheet.getColumnWidth(c)
-        val widthChars = (widthUnits / 256.0).coerceAtLeast(8.0)
-
-        // Approximate Excel's wrapped line count conservatively. This avoids relying
-        // on auto-size, which does not work reliably for merged cells in Apache POI.
-        val explicitLines = text.count { it == '\n' } + 1
-        val estimatedCharsPerLine = (widthChars * 0.82).coerceAtLeast(8.0)
-        val wrappedLines = kotlin.math.ceil(text.length / estimatedCharsPerLine).toInt().coerceAtLeast(1)
-        val lineCount = maxOf(explicitLines, wrappedLines)
-        val neededTotalHeight = maxOf(minimumHeightPoints, lineCount * 15f + 8f)
-
-        var existingTotalHeight = 0f
-        for (r in firstRow..lastRow) {
-            existingTotalHeight += if (sheet.getRow(r).height >= 0) sheet.getRow(r).heightInPoints else 15f
-        }
-
-        if (neededTotalHeight > existingTotalHeight) {
-            val extra = neededTotalHeight - existingTotalHeight
-            val targetRow = sheet.getRow(firstRow) ?: sheet.createRow(firstRow)
-            targetRow.heightInPoints += extra
         }
     }
 
