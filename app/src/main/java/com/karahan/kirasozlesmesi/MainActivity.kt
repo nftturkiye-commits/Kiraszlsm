@@ -45,7 +45,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Scrollable form + fixed action bar at the bottom.
         val root = FrameLayout(this)
         val scroll = ScrollView(this)
         val content = LinearLayout(this).apply {
@@ -124,10 +123,31 @@ class MainActivity : AppCompatActivity() {
         }.also { content.addView(it) }
         evacuationDate = field(content, "Taahhüt Edilen Tahliye Tarihi")
 
+        // GEÇİCİ TEST VERİLERİ: Uygulama tam hazır olduğunda temizlenecek.
+        ownerName.setText("Ahmet Yılmaz")
+        ownerTc.setText("11111111110")
+        ownerAddress.setText("Atatürk Mahallesi Cumhuriyet Caddesi No:25 Daire:8 Merkez/Sivas")
+        ownerPhone.setText("0532 123 45 67")
+        tenantName.setText("Mehmet Kaya")
+        tenantTc.setText("11111111112")
+        tenantWork.setText("Organize Sanayi Bölgesi 12. Cadde No:18 Merkez/Sivas")
+        tenantPhone.setText("0542 987 65 43")
+        flat.setText("6")
+        neighborhood.setText("Kılavuz Mahallesi")
+        street.setText("Bağdat Caddesi No:42")
+        dwelling.setText("EV - MESKEN")
+        address.setText("Kılavuz Mahallesi Bağdat Caddesi No:42 Daire:6 Merkez/Sivas")
+        monthlyRent.setText("15000")
+        paymentType.setText("Banka havalesi")
+        duration.setText("1 yıl")
+        startDate.setText("01.09.2026")
+        specialTerms.setText("TEST ÖZEL ŞART: Bu uzun metin özellikle yazının hücre içinde sıkışma ve taşma durumunu kontrol etmek için eklenmiştir. Sözleşme oluşturulduğunda orijinal Excel sayfa düzeni, sütun genişlikleri, satır yükseklikleri, biçimler ve formüller korunmalıdır. Uzun adres ve uzun özel şartlar da kontrol edilecektir.")
+        evacuationDate.setText("01.09.2027")
+        calculateAnnual()
+
         scroll.addView(content)
         root.addView(scroll, FrameLayout.LayoutParams(-1, -1))
 
-        // Fixed button: always visible while the form scrolls.
         val actionBar = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(20, 10, 20, 16)
@@ -147,7 +167,6 @@ class MainActivity : AppCompatActivity() {
         val actionParams = FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM)
         root.addView(actionBar, actionParams)
         setContentView(root)
-        calculateAnnual()
     }
 
     private fun title(layout: LinearLayout, text: String) {
@@ -270,7 +289,6 @@ class MainActivity : AppCompatActivity() {
                 setValue(s1, "E27", purpose.text.toString().ifBlank { "EV - MESKEN" })
                 setValue(s1, "E31", fixtureText())
 
-                // Original Excel links are preserved.
                 s1.getRow(16).getCell(4).cellFormula = "E8"
                 s1.getRow(17).getCell(4).cellFormula = "E9"
                 s2.getRow(57).getCell(1).cellFormula = "Sayfa1!E11"
