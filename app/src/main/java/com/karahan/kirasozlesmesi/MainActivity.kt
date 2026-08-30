@@ -100,7 +100,7 @@ class MainActivity : AppCompatActivity() {
         purpose = field(content, "Kullanım Amacı")
         purpose.setText("EV - MESKEN")
 
-        section(content, "5. DEMİRBŞLAR")
+        section(content, "5. DEMİRBAŞLAR")
         fixturesContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         addFixture("MUTFAK DOLABI")
         addFixture("VESTİYER")
@@ -313,7 +313,7 @@ class MainActivity : AppCompatActivity() {
 
                 setValue(s3, "B24", evacuationDate.text.toString())
 
-                // IMPORTANT: do not alter the template's original A4, widths, heights, merges, fonts or wrapping.
+                // Do not alter the template's original A4, widths, heights, merges, fonts or wrapping.
                 workbook.setForceFormulaRecalculation(true)
                 contentResolver.openOutputStream(uri).use { output ->
                     requireNotNull(output)
