@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import org.apache.poi.ss.usermodel.WorkbookFactory
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.text.DecimalFormat
+import kotlin.math.ceil
 
 class MainActivity : AppCompatActivity() {
 
@@ -307,23 +308,92 @@ class MainActivity : AppCompatActivity() {
                 setValue(s2, "B60", "TELEFON :" + ownerPhone.text.toString())
                 setValue(s2, "F60", "TELEFON :" + tenantPhone.text.toString())
 
-                if (specialTerms.text.toString().trim().isNotEmpty()) {
-                    setValue(s2, "B50", specialTerms.text.toString().trim())
+                val specialText = specialTerms.text.toString().trim()
+                if (specialText.isNotEmpty()) {
+                    setWrappedValue(s2, "B50", specialText)
                 }
 
                 setValue(s3, "B24", evacuationDate.text.toString())
 
-                // Do not alter the template's original A4, widths, heights, merges, fonts or wrapping.
+                // Preserve the original template's layout, widths, merges and formatting.
                 workbook.setForceFormulaRecalculation(true)
                 contentResolver.openOutputStream(uri).use { output ->
                     requireNotNull(output)
                     workbook.write(output)
                 }
                 workbook.close()
-                Toast.makeText(this, "Excel oluşturuldu. Orijinal şablon düzeni ve formüller korundu.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Excel oluşturuldu. Özel şart metni sarılarak tamamen görünür.", Toast.LENGTH_LONG).show()
             }
         } catch (e: Exception) {
             Toast.makeText(this, "Excel oluşturulamadı: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun setWrappedValue(
+        sheet: org.apache.poi.ss.usermodel.Sheet,
+        cellRef: String,
+        value: String
+    ) {
+        val m = Regex("([A-Z]+)([0-9]+)").matchEntire(cellRef) ?: return
+        val colLetters = m.groupValues[1]
+        val rowIndex = m.groupValues[2].toInt() - 1
+
+        var col = 0
+        for (ch in colLetters) col = col * 26 + (ch - 'A' + 1)
+        col -= 1
+
+        val row = sheet.getRow(rowIndex) ?: sheet.createRow(rowIndex)
+        val cell = row.getCell(col) ?: row.createCell(col)
+
+        val style = sheet.workbook.createCellStyle()
+        style.cloneStyleFrom(cell.cellStyle)
+        style.wrapText = true
+        cell.cellStyle = style
+        cell.setCellValue(value)
+
+        var firstCol = col
+        var lastCol = col
+        var firstRow = rowIndex
+        var lastRow = rowIndex
+
+        for (region in sheet.mergedRegions) {
+            if (region.isInRange(rowIndex, col)) {
+                firstCol = region.firstColumn
+                lastCol = region.lastColumn
+                firstRow = region.firstRow
+                lastRow = region.lastRow
+                break
+            }
+        }
+
+        var widthUnits = 0
+        for (c in firstCol..lastCol) {
+            widthUnits += sheet.getColumnWidth(c)
+        }
+
+        val widthChars = (widthUnits / 256.0).coerceAtLeast(8.0)
+        val explicitLines = value.count { it == '\n' } + 1
+        val estimatedCharsPerLine = (widthChars * 0.82).coerceAtLeast(8.0)
+
+        val wrappedLines = ceil(value.length / estimatedCharsPerLine).toInt().coerceAtLeast(1)
+        val lineCount = maxOf(explicitLines, wrappedLines)
+
+        val neededTotalHeight = maxOf(23.25f, lineCount * 15f + 8f)
+
+        var existingTotalHeight = 0f
+        for (r in firstRow..lastRow) {
+            val target = sheet.getRow(r)
+            existingTotalHeight += if (target != null && target.height >= 0) {
+                target.heightInPoints
+            } else {
+                15f
+            }
+        }
+
+        if (neededTotalHeight > existingTotalHeight) {
+            val extra = neededTotalHeight - existingTotalHeight
+            val targetRow = sheet.getRow(firstRow) ?: sheet.createRow(firstRow)
+            targetRow.heightInPoints += extra
         }
     }
 
