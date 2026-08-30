@@ -9,7 +9,6 @@ import androidx.appcompat.app.AppCompatActivity
 import org.apache.poi.ss.usermodel.WorkbookFactory
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.text.DecimalFormat
-import kotlin.math.ceil
 
 class MainActivity : AppCompatActivity() {
 
@@ -265,16 +264,17 @@ class MainActivity : AppCompatActivity() {
                 val s2 = workbook.getSheet("Sayfa2")
                 val s3 = workbook.getSheet("Sayfa3")
 
-                // E7 is part of the original address hierarchy (SIVAS MERKEZ) and is preserved from the template.
                 setValue(s1, "E8", neighborhood.text.toString())
                 setValue(s1, "E9", street.text.toString())
                 setValue(s1, "E10", dwelling.text.toString().ifBlank { "EV - MESKEN" })
                 setValue(s1, "E11", ownerName.text.toString())
                 setValue(s1, "E12", ownerTc.text.toString())
-                setValue(s1, "E13", ownerAddress.text.toString())
+                setWrappedValue(s1, "E13", ownerAddress.text.toString())
+
                 setValue(s1, "E15", tenantName.text.toString())
                 setValue(s1, "E16", tenantTc.text.toString())
-                setValue(s1, "E19", tenantWork.text.toString())
+                setWrappedValue(s1, "E19", tenantWork.text.toString())
+
                 setValue(s1, "E21", parseMoney(monthlyRent.text.toString()) ?: 0.0)
 
                 if (annualManual) {
@@ -288,7 +288,7 @@ class MainActivity : AppCompatActivity() {
                 setValue(s1, "E25", startDate.text.toString())
                 setValue(s1, "E26", currentCondition.text.toString().ifBlank { "BOŞ" })
                 setValue(s1, "E27", purpose.text.toString().ifBlank { "EV - MESKEN" })
-                setValue(s1, "E31", fixtureText())
+                setWrappedValue(s1, "E31", fixtureText())
 
                 s1.getRow(16).getCell(4).cellFormula = "E8"
                 s1.getRow(17).getCell(4).cellFormula = "E9"
@@ -305,6 +305,8 @@ class MainActivity : AppCompatActivity() {
                 s3.getRow(34).getCell(5).cellFormula = "Sayfa1!E15"
                 s3.getRow(35).getCell(5).cellFormula = "Sayfa1!E16"
 
+                applyWrapForFormulaCell(s3, "B19", neighborhood.text.toString())
+
                 setValue(s2, "B60", "TELEFON :" + ownerPhone.text.toString())
                 setValue(s2, "F60", "TELEFON :" + tenantPhone.text.toString())
 
@@ -315,17 +317,112 @@ class MainActivity : AppCompatActivity() {
 
                 setValue(s3, "B24", evacuationDate.text.toString())
 
-                // Preserve the original template's layout, widths, merges and formatting.
                 workbook.setForceFormulaRecalculation(true)
                 contentResolver.openOutputStream(uri).use { output ->
                     requireNotNull(output)
                     workbook.write(output)
                 }
                 workbook.close()
-                Toast.makeText(this, "Excel oluşturuldu. Özel şart metni sarılarak tamamen görünür.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Excel oluşturuldu. Uzun metinler ilgili hücrelerde sarılarak tamamen görünür.", Toast.LENGTH_LONG).show()
             }
         } catch (e: Exception) {
             Toast.makeText(this, "Excel oluşturulamadı: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun estimateWrappedLineCount(
+        sheet: org.apache.poi.ss.usermodel.Sheet,
+        firstCol: Int,
+        lastCol: Int,
+        fontSizeInPoints: Float,
+        text: String
+    ): Int {
+        var widthUnits = 0
+        for (c in firstCol..lastCol) widthUnits += sheet.getColumnWidth(c)
+
+        val digitsWidthChars = widthUnits / 256.0
+        val defaultFontSize = sheet.workbook.getFontAt(0).fontHeightInPoints.toFloat().coerceAtLeast(1f)
+        val fontScale = (defaultFontSize / fontSizeInPoints.coerceAtLeast(1f)).toDouble()
+        val paddingChars = 1.0
+        val avgCharWidthFactor = 0.9
+
+        val charsPerLine = (((digitsWidthChars * fontScale) - paddingChars) * avgCharWidthFactor)
+            .coerceAtLeast(6.0)
+            .toInt()
+            .coerceAtLeast(6)
+
+        var lines = 0
+        for (paragraph in text.split("\n")) {
+            if (paragraph.isEmpty()) {
+                lines++
+                continue
+            }
+            var currentLineLen = 0
+            lines++
+            for (word in paragraph.split(" ")) {
+                val wordLen = word.length
+                if (wordLen > charsPerLine) {
+                    if (currentLineLen > 0) {
+                        lines++
+                        currentLineLen = 0
+                    }
+                    lines += wordLen / charsPerLine
+                    currentLineLen = wordLen % charsPerLine
+                    continue
+                }
+                val addLen = if (currentLineLen == 0) wordLen else currentLineLen + 1 + wordLen
+                if (addLen <= charsPerLine) {
+                    currentLineLen = addLen
+                } else {
+                    lines++
+                    currentLineLen = wordLen
+                }
+            }
+        }
+        return lines.coerceAtLeast(1)
+    }
+
+    private fun growRowForWrap(
+        sheet: org.apache.poi.ss.usermodel.Sheet,
+        rowIndex: Int,
+        col: Int,
+        fontIndex: Int,
+        text: String
+    ) {
+        var firstCol = col
+        var lastCol = col
+        var firstRow = rowIndex
+        var lastRow = rowIndex
+        for (region in sheet.mergedRegions) {
+            if (region.isInRange(rowIndex, col)) {
+                firstCol = region.firstColumn
+                lastCol = region.lastColumn
+                firstRow = region.firstRow
+                lastRow = region.lastRow
+                break
+            }
+        }
+
+        val fontSizeInPoints = sheet.workbook.getFontAt(fontIndex).fontHeightInPoints.toFloat()
+        val lineCount = estimateWrappedLineCount(sheet, firstCol, lastCol, fontSizeInPoints, text)
+        val lineHeightPoints = fontSizeInPoints * 1.3f
+
+        var existingTotalHeight = 0f
+        for (r in firstRow..lastRow) {
+            val target = sheet.getRow(r)
+            existingTotalHeight += if (target != null && target.height >= 0) {
+                target.heightInPoints
+            } else {
+                sheet.defaultRowHeightInPoints
+            }
+        }
+
+        val neededTotalHeight = maxOf(existingTotalHeight, lineCount * lineHeightPoints + 8f)
+
+        if (neededTotalHeight > existingTotalHeight) {
+            val extra = neededTotalHeight - existingTotalHeight
+            val targetRow = sheet.getRow(firstRow) ?: sheet.createRow(firstRow)
+            targetRow.heightInPoints += extra
         }
     }
 
@@ -337,7 +434,6 @@ class MainActivity : AppCompatActivity() {
         val m = Regex("([A-Z]+)([0-9]+)").matchEntire(cellRef) ?: return
         val colLetters = m.groupValues[1]
         val rowIndex = m.groupValues[2].toInt() - 1
-
         var col = 0
         for (ch in colLetters) col = col * 26 + (ch - 'A' + 1)
         col -= 1
@@ -347,54 +443,36 @@ class MainActivity : AppCompatActivity() {
 
         val style = sheet.workbook.createCellStyle()
         style.cloneStyleFrom(cell.cellStyle)
+        val fontIndex = style.fontIndex.toInt()
         style.wrapText = true
         cell.cellStyle = style
         cell.setCellValue(value)
 
-        var firstCol = col
-        var lastCol = col
-        var firstRow = rowIndex
-        var lastRow = rowIndex
+        growRowForWrap(sheet, rowIndex, col, fontIndex, value)
+    }
 
-        for (region in sheet.mergedRegions) {
-            if (region.isInRange(rowIndex, col)) {
-                firstCol = region.firstColumn
-                lastCol = region.lastColumn
-                firstRow = region.firstRow
-                lastRow = region.lastRow
-                break
-            }
-        }
+    private fun applyWrapForFormulaCell(
+        sheet: org.apache.poi.ss.usermodel.Sheet,
+        cellRef: String,
+        resolvedText: String
+    ) {
+        val m = Regex("([A-Z]+)([0-9]+)").matchEntire(cellRef) ?: return
+        val colLetters = m.groupValues[1]
+        val rowIndex = m.groupValues[2].toInt() - 1
+        var col = 0
+        for (ch in colLetters) col = col * 26 + (ch - 'A' + 1)
+        col -= 1
 
-        var widthUnits = 0
-        for (c in firstCol..lastCol) {
-            widthUnits += sheet.getColumnWidth(c)
-        }
+        val row = sheet.getRow(rowIndex) ?: return
+        val cell = row.getCell(col) ?: return
 
-        val widthChars = (widthUnits / 256.0).coerceAtLeast(8.0)
-        val explicitLines = value.count { it == '\n' } + 1
-        val estimatedCharsPerLine = (widthChars * 0.82).coerceAtLeast(8.0)
+        val style = sheet.workbook.createCellStyle()
+        style.cloneStyleFrom(cell.cellStyle)
+        val fontIndex = style.fontIndex.toInt()
+        style.wrapText = true
+        cell.cellStyle = style
 
-        val wrappedLines = ceil(value.length / estimatedCharsPerLine).toInt().coerceAtLeast(1)
-        val lineCount = maxOf(explicitLines, wrappedLines)
-
-        val neededTotalHeight = maxOf(23.25f, lineCount * 15f + 8f)
-
-        var existingTotalHeight = 0f
-        for (r in firstRow..lastRow) {
-            val target = sheet.getRow(r)
-            existingTotalHeight += if (target != null && target.height >= 0) {
-                target.heightInPoints
-            } else {
-                15f
-            }
-        }
-
-        if (neededTotalHeight > existingTotalHeight) {
-            val extra = neededTotalHeight - existingTotalHeight
-            val targetRow = sheet.getRow(firstRow) ?: sheet.createRow(firstRow)
-            targetRow.heightInPoints += extra
-        }
+        growRowForWrap(sheet, rowIndex, col, fontIndex, resolvedText)
     }
 
     private fun setValue(sheet: org.apache.poi.ss.usermodel.Sheet, cellRef: String, value: String) {
