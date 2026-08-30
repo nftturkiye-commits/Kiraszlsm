@@ -44,15 +44,21 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(28, 28, 28, 28)
-        }
+
+        // Scrollable form + fixed action bar at the bottom.
+        val root = FrameLayout(this)
         val scroll = ScrollView(this)
-        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(28, 28, 28, 140)
+        }
 
         title(content, "KARAHAN EMLAK")
-        title(content, "KİRA SÖZLEŞMESİ")
+        TextView(this).apply {
+            text = "KİRA SÖZLEŞMESİ"
+            textSize = 18f
+            setPadding(0, 0, 0, 12)
+        }.also { content.addView(it) }
 
         section(content, "1. KİRAYA VEREN")
         ownerName = field(content, "Ad Soyad")
@@ -66,12 +72,17 @@ class MainActivity : AppCompatActivity() {
         tenantWork = field(content, "İşyeri Adresi")
         tenantPhone = field(content, "Telefon")
 
-        section(content, "3. KİRALANAN EV")
+        section(content, "3. KİRALANAN TAŞINMAZ")
         flat = field(content, "Daire")
         neighborhood = field(content, "Mahalle")
         street = field(content, "Sokak / No")
         dwelling = field(content, "Ev / Mesken")
-        address = multiField(content, "Açık Adres")
+        address = multiField(content, "Açık Adres (isteğe bağlı)")
+        TextView(this).apply {
+            text = "Tahliye taahhütnamesindeki adres, kiralanan taşınmazın Mahalle ve Sokak / No bilgilerinden otomatik alınır."
+            textSize = 13f
+            setPadding(0, 0, 0, 4)
+        }.also { content.addView(it) }
 
         section(content, "4. KİRA BİLGİLERİ")
         monthlyRent = field(content, "Aylık Kira (TL)")
@@ -102,24 +113,39 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener { addFixture("") }
         }.also { content.addView(it) }
 
-        section(content, "6. ÖZEL ŞARTLAR")
+        section(content, "6. HUSUSİ ŞARTLAR")
         specialTerms = multiField(content, "Ek özel şart (isteğe bağlı)")
 
         section(content, "7. TAHLİYE TAAHHÜTNAMESİ")
+        TextView(this).apply {
+            text = "Adres otomatik olarak kiralanan taşınmaz adresinden alınacaktır."
+            textSize = 13f
+            setPadding(0, 0, 0, 4)
+        }.also { content.addView(it) }
         evacuationDate = field(content, "Taahhüt Edilen Tahliye Tarihi")
 
-        TextView(this).apply {
-            text = "Excel şablonundaki formüller korunur. Yıllık kira otomatik hesaplanır; gerektiğinde 'YILLIK KİRA: OTOMATİK' düğmesiyle manuel düzenlemeye geçebilirsiniz. Oluşturulan Excel PC'de de normal şekilde elle düzenlenebilir."
-            setPadding(0, 8, 0, 16)
-        }.also { content.addView(it) }
-
-        Button(this).apply {
-            text = "EXCEL OLUŞTUR"
-            setOnClickListener { prepareExcel() }
-        }.also { content.addView(it) }
-
         scroll.addView(content)
-        root.addView(scroll)
+        root.addView(scroll, FrameLayout.LayoutParams(-1, -1))
+
+        // Fixed button: always visible while the form scrolls.
+        val actionBar = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(20, 10, 20, 16)
+            setBackgroundColor(0xFFFFFFFF.toInt())
+        }
+        Button(this).apply {
+            text = "EXCEL'E DÖNÜŞTÜR"
+            textSize = 17f
+            setOnClickListener { prepareExcel() }
+        }.also { actionBar.addView(it, LinearLayout.LayoutParams(-1, 56)) }
+        TextView(this).apply {
+            text = "Formüller korunur • PC'de Excel elle düzenlenebilir"
+            gravity = Gravity.CENTER
+            textSize = 12f
+        }.also { actionBar.addView(it) }
+
+        val actionParams = FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM)
+        root.addView(actionBar, actionParams)
         setContentView(root)
         calculateAnnual()
     }
@@ -127,8 +153,8 @@ class MainActivity : AppCompatActivity() {
     private fun title(layout: LinearLayout, text: String) {
         TextView(this).apply {
             this.text = text
-            textSize = 24f
-            setPadding(0, 0, 0, 10)
+            textSize = 26f
+            setPadding(0, 0, 0, 4)
         }.also { layout.addView(it) }
     }
 
@@ -219,7 +245,6 @@ class MainActivity : AppCompatActivity() {
                 val s2 = workbook.getSheet("Sayfa2")
                 val s3 = workbook.getSheet("Sayfa3")
 
-                // Source/input cells from the original Excel template.
                 setValue(s1, "E7", flat.text.toString())
                 setValue(s1, "E8", neighborhood.text.toString())
                 setValue(s1, "E9", street.text.toString())
@@ -232,7 +257,6 @@ class MainActivity : AppCompatActivity() {
                 setValue(s1, "E19", tenantWork.text.toString())
                 setValue(s1, "E21", parseMoney(monthlyRent.text.toString()) ?: 0.0)
 
-                // Keep the original formula by default. Only replace it when the user explicitly selects manual mode.
                 if (annualManual) {
                     setValue(s1, "E22", parseMoney(annualRent.text.toString()) ?: 0.0)
                 } else {
@@ -246,7 +270,7 @@ class MainActivity : AppCompatActivity() {
                 setValue(s1, "E27", purpose.text.toString().ifBlank { "EV - MESKEN" })
                 setValue(s1, "E31", fixtureText())
 
-                // Preserve the original cross-sheet formulas on E17/E18 and Sayfa2/Sayfa3.
+                // Original Excel links are preserved.
                 s1.getRow(16).getCell(4).cellFormula = "E8"
                 s1.getRow(17).getCell(4).cellFormula = "E9"
                 s2.getRow(57).getCell(1).cellFormula = "Sayfa1!E11"
@@ -262,11 +286,9 @@ class MainActivity : AppCompatActivity() {
                 s3.getRow(34).getCell(5).cellFormula = "Sayfa1!E15"
                 s3.getRow(35).getCell(5).cellFormula = "Sayfa1!E16"
 
-                // The original template has phone placeholders; fill them without disturbing the other formulas.
                 setValue(s2, "B60", "TELEFON :" + ownerPhone.text.toString())
                 setValue(s2, "F60", "TELEFON :" + tenantPhone.text.toString())
 
-                // Keep the original standard special terms and use the empty B50 row for optional additions.
                 if (specialTerms.text.toString().trim().isNotEmpty()) {
                     setValue(s2, "B50", specialTerms.text.toString().trim())
                 }
