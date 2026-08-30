@@ -314,10 +314,8 @@ class MainActivity : AppCompatActivity() {
 
                 setValue(s3, "B24", evacuationDate.text.toString())
 
-                // A4 / baskı düzeni: orijinal şablonun üç çalışma sayfasının düzenini koru.
                 configureA4Layout(workbook)
 
-                // Uzun kullanıcı metinleri hücre sınırında kesilmesin; mevcut biçimlerin geri kalanı korunur.
                 enableWrap(s1, "E13", 36f)
                 enableWrap(s1, "E19", 36f)
                 enableWrap(s1, "E31", 32f)
@@ -342,7 +340,7 @@ class MainActivity : AppCompatActivity() {
             sheet.setFitToPage(true)
             sheet.setAutobreaks(false)
             val setup = sheet.printSetup
-            setup.paperSize = 9 // A4
+            setup.paperSize = 9
             setup.landscape = false
             setup.fitWidth = 1
             setup.fitHeight = 1
@@ -350,7 +348,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun enableWrap(sheet: org.apache.poi.ss.usermodel.Sheet, cellRef: String, rowHeightPoints: Float) {
+    private fun enableWrap(sheet: org.apache.poi.ss.usermodel.Sheet, cellRef: String, minimumHeightPoints: Float) {
         val m = Regex("([A-Z]+)([0-9]+)").matchEntire(cellRef) ?: return
         val colLetters = m.groupValues[1]
         val rowIndex = m.groupValues[2].toInt() - 1
@@ -359,11 +357,54 @@ class MainActivity : AppCompatActivity() {
         col -= 1
         val row = sheet.getRow(rowIndex) ?: return
         val cell = row.getCell(col) ?: return
+
         val style = sheet.workbook.createCellStyle()
         style.cloneStyleFrom(cell.cellStyle)
         style.wrapText = true
         cell.cellStyle = style
-        row.heightInPoints = rowHeightPoints
+
+        // The original workbook's merged cells and column widths are preserved.
+        // Only the height needed by the actual text is increased, so long addresses
+        // and special conditions are fully visible without redesigning the template.
+        val text = cell.toString().trim()
+        if (text.isEmpty()) return
+
+        var firstCol = col
+        var lastCol = col
+        var firstRow = rowIndex
+        var lastRow = rowIndex
+        for (region in sheet.mergedRegions) {
+            if (region.isInRange(rowIndex, col)) {
+                firstCol = region.firstColumn
+                lastCol = region.lastColumn
+                firstRow = region.firstRow
+                lastRow = region.lastRow
+                break
+            }
+        }
+
+        var widthUnits = 0
+        for (c in firstCol..lastCol) widthUnits += sheet.getColumnWidth(c)
+        val widthChars = (widthUnits / 256.0).coerceAtLeast(8.0)
+
+        // Approximate Excel's wrapped line count conservatively. This avoids relying
+        // on auto-size, which does not work reliably for merged cells in Apache POI.
+        val explicitLines = text.count { it == '\n' } + 1
+        val estimatedCharsPerLine = (widthChars * 0.95).coerceAtLeast(8.0)
+        val wrappedLines = kotlin.math.ceil(text.length / estimatedCharsPerLine).toInt().coerceAtLeast(1)
+        val lineCount = maxOf(explicitLines, wrappedLines)
+        val neededTotalHeight = maxOf(minimumHeightPoints, lineCount * 15f + 8f)
+
+        var existingTotalHeight = 0f
+        for (r in firstRow..lastRow) {
+            existingTotalHeight += if (sheet.getRow(r).height >= 0) sheet.getRow(r).heightInPoints else 15f
+        }
+
+        if (neededTotalHeight > existingTotalHeight) {
+            val extra = neededTotalHeight - existingTotalHeight
+            val targetRow = sheet.getRow(firstRow) ?: sheet.createRow(firstRow)
+            targetRow.heightInPoints += extra
+        }
     }
 
     private fun setValue(sheet: org.apache.poi.ss.usermodel.Sheet, cellRef: String, value: String) {
