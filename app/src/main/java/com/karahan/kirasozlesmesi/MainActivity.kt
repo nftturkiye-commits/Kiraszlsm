@@ -5,8 +5,11 @@ import android.os.Bundle
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import org.apache.poi.ss.usermodel.CellRangeAddress
+import org.apache.poi.ss.usermodel.VerticalAlignment
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.util.Locale
+import kotlin.math.ceil
 
 class MainActivity : AppCompatActivity() {
 
@@ -322,17 +325,59 @@ class MainActivity : AppCompatActivity() {
             // SAYFA 1 - KİRA SÖZLEŞMESİ
             // ------------------------------------------------
 
-            setValue(sayfa1, "E7", flat.text.toString())
-            setValue(sayfa1, "E8", neighborhood.text.toString())
-            setValue(sayfa1, "E9", street.text.toString())
-            setValue(sayfa1, "E10", dwelling.text.toString())
+            setValue(
+                sayfa1,
+                "E7",
+                flat.text.toString()
+            )
 
-            setValue(sayfa1, "E11", ownerName.text.toString())
-            setValue(sayfa1, "E12", ownerTc.text.toString())
-            setValue(sayfa1, "E13", ownerAddress.text.toString())
+            setValue(
+                sayfa1,
+                "E8",
+                neighborhood.text.toString()
+            )
 
-            setValue(sayfa1, "E15", tenantName.text.toString())
-            setValue(sayfa1, "E16", tenantTc.text.toString())
+            setValue(
+                sayfa1,
+                "E9",
+                street.text.toString()
+            )
+
+            setValue(
+                sayfa1,
+                "E10",
+                dwelling.text.toString()
+            )
+
+            setValue(
+                sayfa1,
+                "E11",
+                ownerName.text.toString()
+            )
+
+            setValue(
+                sayfa1,
+                "E12",
+                ownerTc.text.toString()
+            )
+
+            setValue(
+                sayfa1,
+                "E13",
+                ownerAddress.text.toString()
+            )
+
+            setValue(
+                sayfa1,
+                "E15",
+                tenantName.text.toString()
+            )
+
+            setValue(
+                sayfa1,
+                "E16",
+                tenantTc.text.toString()
+            )
 
             /*
              * Şablonda E17 ve E18 zaten:
@@ -345,7 +390,11 @@ class MainActivity : AppCompatActivity() {
              * Bu yüzden onları değiştirmiyoruz.
              */
 
-            setValue(sayfa1, "E19", tenantWork.text.toString())
+            setValue(
+                sayfa1,
+                "E19",
+                tenantWork.text.toString()
+            )
 
             val monthly =
                 monthlyRent.text.toString()
@@ -360,7 +409,12 @@ class MainActivity : AppCompatActivity() {
                     .toDoubleOrNull()
 
             if (monthly != null) {
-                setNumber(sayfa1, "E21", monthly)
+
+                setNumber(
+                    sayfa1,
+                    "E21",
+                    monthly
+                )
             }
 
             /*
@@ -376,7 +430,9 @@ class MainActivity : AppCompatActivity() {
 
             if (monthly != null &&
                 annual != null &&
-                kotlin.math.abs(annual - monthly * 12.0) < 0.01
+                kotlin.math.abs(
+                    annual - monthly * 12.0
+                ) < 0.01
             ) {
 
                 setFormula(
@@ -422,7 +478,8 @@ class MainActivity : AppCompatActivity() {
             // DEMİRBAŞLAR
             // ------------------------------------------------
 
-            val fixtures = ArrayList<String>()
+            val fixtures =
+                ArrayList<String>()
 
             for (i in 0 until fixturesContainer.childCount) {
 
@@ -430,7 +487,9 @@ class MainActivity : AppCompatActivity() {
                     fixturesContainer.getChildAt(i)
                         as? LinearLayout ?: continue
 
-                if (row.childCount == 0) continue
+                if (row.childCount == 0) {
+                    continue
+                }
 
                 val input =
                     row.getChildAt(0)
@@ -452,6 +511,7 @@ class MainActivity : AppCompatActivity() {
 
             // ------------------------------------------------
             // ÖZEL ŞARTLAR
+            // B50:K51 BİRLEŞİK ALAN
             // ------------------------------------------------
 
             val terms =
@@ -459,9 +519,9 @@ class MainActivity : AppCompatActivity() {
 
             if (terms.isNotEmpty()) {
 
-                setValue(
+                setWrappedMergedText(
                     sayfa2,
-                    "B50",
+                    "B50:K51",
                     terms
                 )
             }
@@ -509,8 +569,13 @@ class MainActivity : AppCompatActivity() {
                 contentResolver.openOutputStream(uri)
 
             if (output == null) {
+
                 workbook.close()
-                message("Dosya oluşturulamadı.")
+
+                message(
+                    "Dosya oluşturulamadı."
+                )
+
                 return
             }
 
@@ -535,6 +600,142 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // --------------------------------------------------------
+    // B50:K51 UZUN METİN YAZMA
+    // --------------------------------------------------------
+
+    private fun setWrappedMergedText(
+        sheet: org.apache.poi.ss.usermodel.Sheet,
+        rangeAddress: String,
+        text: String
+    ) {
+
+        val targetRange =
+            CellRangeAddress.valueOf(rangeAddress)
+
+        /*
+         * B50:K51 ile çakışan mevcut birleşimleri
+         * kaldırıyoruz.
+         */
+
+        val overlappingRegions =
+            sheet.mergedRegions
+                .mapIndexed { index, region ->
+                    index to region
+                }
+                .filter { (_, region) ->
+
+                    region.firstRow <= targetRange.lastRow &&
+                    region.lastRow >= targetRange.firstRow &&
+                    region.firstColumn <= targetRange.lastColumn &&
+                    region.lastColumn >= targetRange.firstColumn
+                }
+                .map { it.first }
+                .sortedDescending()
+
+        for (index in overlappingRegions) {
+            sheet.removeMergedRegion(index)
+        }
+
+        /*
+         * B50:K51 alanını birleştir.
+         */
+
+        sheet.addMergedRegion(targetRange)
+
+        /*
+         * B50 hücresini al.
+         */
+
+        val row =
+            sheet.getRow(targetRange.firstRow)
+                ?: sheet.createRow(
+                    targetRange.firstRow
+                )
+
+        val cell =
+            row.getCell(targetRange.firstColumn)
+                ?: row.createCell(
+                    targetRange.firstColumn
+                )
+
+        /*
+         * Metni yaz.
+         */
+
+        cell.setCellValue(text)
+
+        /*
+         * Mevcut hücre stilini koruyarak
+         * sadece metin kaydırmayı açıyoruz.
+         */
+
+        val style =
+            cell.cellStyle
+
+        style.wrapText = true
+
+        style.verticalAlignment =
+            VerticalAlignment.TOP
+
+        cell.cellStyle = style
+
+        /*
+         * Uzunluğa göre yaklaşık satır yüksekliği.
+         *
+         * B:K oldukça geniş olduğu için
+         * yaklaşık 105 karakter / satır
+         * kabul ediyoruz.
+         */
+
+        val charactersPerLine = 105
+
+        val lineCount =
+            ceil(
+                text.length.toDouble() /
+                        charactersPerLine
+            )
+                .toInt()
+                .coerceAtLeast(1)
+
+        /*
+         * B50:K51 iki satırdan oluşuyor.
+         * Gerekirse iki satırın yüksekliğini artırıyoruz.
+         */
+
+        val linesPerRow = 2
+
+        val rowsNeeded =
+            ceil(
+                lineCount.toDouble() /
+                        linesPerRow
+            )
+                .toInt()
+                .coerceAtLeast(1)
+
+        val heightPerRow =
+            (rowsNeeded * 18f)
+                .coerceAtLeast(30f)
+
+        val row50 =
+            sheet.getRow(49)
+                ?: sheet.createRow(49)
+
+        val row51 =
+            sheet.getRow(50)
+                ?: sheet.createRow(50)
+
+        row50.heightInPoints =
+            heightPerRow
+
+        row51.heightInPoints =
+            heightPerRow
+    }
+
+    // --------------------------------------------------------
+    // HÜCRE YAZMA
+    // --------------------------------------------------------
+
     private fun setValue(
         sheet: org.apache.poi.ss.usermodel.Sheet,
         address: String,
@@ -542,7 +743,10 @@ class MainActivity : AppCompatActivity() {
     ) {
 
         val cell =
-            getCell(sheet, address)
+            getCell(
+                sheet,
+                address
+            )
 
         cell.setCellValue(value)
     }
@@ -554,7 +758,10 @@ class MainActivity : AppCompatActivity() {
     ) {
 
         val cell =
-            getCell(sheet, address)
+            getCell(
+                sheet,
+                address
+            )
 
         cell.setCellValue(value)
     }
@@ -566,9 +773,13 @@ class MainActivity : AppCompatActivity() {
     ) {
 
         val cell =
-            getCell(sheet, address)
+            getCell(
+                sheet,
+                address
+            )
 
-        cell.cellFormula = formula
+        cell.cellFormula =
+            formula
     }
 
     private fun getCell(
@@ -578,7 +789,9 @@ class MainActivity : AppCompatActivity() {
 
         val parts =
             address.split(
-                Regex("(?<=\\D)(?=\\d)")
+                Regex(
+                    "(?<=\\D)(?=\\d)"
+                )
             )
 
         val columnName =
@@ -605,9 +818,14 @@ class MainActivity : AppCompatActivity() {
         var result = 0
 
         for (char in column.uppercase()) {
+
             result =
                 result * 26 +
-                        (char.code - 'A'.code + 1)
+                        (
+                            char.code -
+                                    'A'.code +
+                                    1
+                        )
         }
 
         return result - 1
@@ -620,10 +838,15 @@ class MainActivity : AppCompatActivity() {
         return name
             .trim()
             .replace(
-                Regex("[^a-zA-Z0-9ğĞüÜşŞıİöÖçÇ ]"),
+                Regex(
+                    "[^a-zA-Z0-9ğĞüÜşŞıİöÖçÇ ]"
+                ),
                 ""
             )
-            .replace(" ", "_")
+            .replace(
+                " ",
+                "_"
+            )
             .ifEmpty {
                 "Kira_Sozlesmesi"
             }
