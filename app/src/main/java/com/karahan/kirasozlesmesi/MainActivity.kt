@@ -6,6 +6,7 @@ import android.view.Gravity
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import org.apache.poi.ss.usermodel.CellStyle
 import org.apache.poi.ss.usermodel.WorkbookFactory
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.text.DecimalFormat
@@ -313,17 +314,56 @@ class MainActivity : AppCompatActivity() {
 
                 setValue(s3, "B24", evacuationDate.text.toString())
 
+                // A4 / baskı düzeni: orijinal şablonun üç çalışma sayfasının düzenini koru.
+                configureA4Layout(workbook)
+
+                // Uzun kullanıcı metinleri hücre sınırında kesilmesin; mevcut biçimlerin geri kalanı korunur.
+                enableWrap(s1, "E13", 36f)
+                enableWrap(s1, "E19", 36f)
+                enableWrap(s1, "E31", 32f)
+                enableWrap(s2, "B50", 54f)
+                enableWrap(s3, "B19", 36f)
+
                 workbook.setForceFormulaRecalculation(true)
                 contentResolver.openOutputStream(uri).use { output ->
                     requireNotNull(output)
                     workbook.write(output)
                 }
                 workbook.close()
-                Toast.makeText(this, "Excel oluşturuldu. Formüller korundu.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Excel oluşturuldu. A4 düzeni ve formüller korundu.", Toast.LENGTH_LONG).show()
             }
         } catch (e: Exception) {
             Toast.makeText(this, "Excel oluşturulamadı: ${e.message}", Toast.LENGTH_LONG).show()
         }
+    }
+
+    private fun configureA4Layout(workbook: XSSFWorkbook) {
+        for (sheet in workbook) {
+            sheet.setFitToPage(true)
+            sheet.setAutobreaks(false)
+            val setup = sheet.printSetup
+            setup.paperSize = 9 // A4
+            setup.landscape = false
+            setup.fitWidth = 1
+            setup.fitHeight = 1
+            setup.scale = 100
+        }
+    }
+
+    private fun enableWrap(sheet: org.apache.poi.ss.usermodel.Sheet, cellRef: String, rowHeightPoints: Float) {
+        val m = Regex("([A-Z]+)([0-9]+)").matchEntire(cellRef) ?: return
+        val colLetters = m.groupValues[1]
+        val rowIndex = m.groupValues[2].toInt() - 1
+        var col = 0
+        for (ch in colLetters) col = col * 26 + (ch - 'A' + 1)
+        col -= 1
+        val row = sheet.getRow(rowIndex) ?: return
+        val cell = row.getCell(col) ?: return
+        val style = sheet.workbook.createCellStyle()
+        style.cloneStyleFrom(cell.cellStyle)
+        style.wrapText = true
+        cell.cellStyle = style
+        row.heightInPoints = rowHeightPoints
     }
 
     private fun setValue(sheet: org.apache.poi.ss.usermodel.Sheet, cellRef: String, value: String) {
