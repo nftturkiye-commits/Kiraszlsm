@@ -390,7 +390,7 @@ class MainActivity : AppCompatActivity() {
         // Approximate Excel's wrapped line count conservatively. This avoids relying
         // on auto-size, which does not work reliably for merged cells in Apache POI.
         val explicitLines = text.count { it == '\n' } + 1
-        val estimatedCharsPerLine = (widthChars * 0.95).coerceAtLeast(8.0)
+        val estimatedCharsPerLine = (widthChars * 0.82).coerceAtLeast(8.0)
         val wrappedLines = kotlin.math.ceil(text.length / estimatedCharsPerLine).toInt().coerceAtLeast(1)
         val lineCount = maxOf(explicitLines, wrappedLines)
         val neededTotalHeight = maxOf(minimumHeightPoints, lineCount * 15f + 8f)
